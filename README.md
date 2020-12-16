@@ -64,15 +64,13 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 ####    LVS-NAT模型的特性：
 
--   修改目标IP地址为挑选出的RS的IP地址。
+-   多目标IP的DNAT，通过将请求报文中的目标地址和目标端口修改为某挑出的RS的RIP和PORT实现转发
 
--   RS可以只使用私有地址，但RS的网关必须指向DIP
-
--   DIP和RIP必须在同一个网段内
+-   RIP和DIP必须在同一个IP网络，且应该使用私网地址；RS的网关要指向DIP
 
 -   请求和响应报文都需要经过 Director Server，高负载场景中，Director Server 易成为性能瓶颈
 
--   支持端口映射
+-   支持端口映射，可修改请求报文的目标PORT
 
 -   RS可以使用任意操作系统
 
@@ -96,23 +94,28 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 ####    LVS-DR（直接路由技术）模型的特性
 
--   将请求报文的目标 MAC 地址设定为挑选出的 RS 的 MAC 地址。
+-   通过为请求报文重新封装一个MAC首部进行转发，源MAC是DIP所在的接口的MAC，目标MAC是某挑选出的RS的RIP所在接口的MAC地址；源IP/PORT，以及目标IP/PORT均保持不变，Director和各RS都得配置使用VIP。
 
--   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS。前端调度器，后端服务器使用相同的 IP 地址，需要解决 IP 地址  冲突问题。
+-   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS。
 
 ```
 解决方案：
 
 1.在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
-    存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
+
+存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
 
 2.arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。
 
-3.修改RS上内核参数（arp_ignore和arp_announce）将RS上的VIP配置在lo接口的别名上，并限制其不能响应对VIP地址解析请求。（最容易实现）
+3.在RS上修改内核参数以限制arp通告及应答级别；
+
+    arp_announce
+
+    arp_ignore
 
 ```
 
--   RS可以使用私有地址；也可以是公网地址，如果使用公网地址，此时可以通过互联网对RIP进行直接访问
+-   RS的RIP可以使用私网地址，也可以是公网地址；RIP与DIP在同一IP网络；RIP的网关不能指向DIP，以确保响应报文不会经由Director，在RS的lo别名网卡上配置vip地址
 
 -   因为使用相同的 IP 地址，RS跟Director Server必须在同一个物理网络中，不支持地址转换，也不支持端口映射
 
@@ -120,9 +123,7 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 -   RS可以是大多数常见的操作系统
 
--   RS的网关绝不指向DIP(因为我们不允许他经过director)
-
--   RS上的lo接口配置VIP的IP地址
+-   RS的网关不指向DIP(因为我们不允许他经过director)
 
 ####    LVS-Tun模型
 
