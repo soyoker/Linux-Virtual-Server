@@ -69,3 +69,77 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 -   RS可以使用任意操作系统
 
 缺陷：对Director Server压力会比较大，请求和响应都需经过director server
+
+####  LVS-DR模型  
+
+重点：将请求报文的目标MAC地址设定为挑选出的RS的MAC地址
+
+<img src="images/dr.jpg">
+
+1、当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链。此时报文的源IP为CIP，目标IP为VIP。
+
+2、PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链
+
+3、IPVS比对数据包请求的服务是否为集群服务，若是，将请求报文中的源MAC地址修改为DIP的MAC地址，将目标MAC地址修改RIP的MAC地址，然后将数据包发至POSTROUTING链。此时的源IP和目的IP均未修改，仅修改了源MAC地址为DIP的MAC地址，目标MAC地址为RIP的MAC地址
+
+4、由于DS和RS在同一个网络中，所以是通过二层来传输。POSTROUTING链检查目标MAC地址为RIP的MAC地址，那么此时数据包将会发至Real Server。
+
+5、RS发现请求报文的MAC地址是自己的MAC地址，就接收此报文。处理完成之后，将响应报文通过lo接口传送给eth0网卡然后向外发出。此时的源IP地址为VIP，目标IP为CIP
+
+6、响应报文最终送达至客户端
+
+####    LVS-DR模型的特性
+
+-   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS
+解决方案：
+
+    -   在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
+存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
+
+    -   arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。这是由iptables提供的
+
+    -   修改RS上内核参数（arp_ignore和arp_announce）将RS上的VIP配置在lo接口的别名上，并限制其不能响应对VIP地址解析请求。（最容易实现）
+
+-   RS可以使用私有地址；也可以是公网地址，如果使用公网地址，此时可以通过互联网对RIP进行直接访问
+
+-   RS跟Director Server必须在同一个物理网络中
+
+-   所有的请求报文经由Director Server，但响应报文必须不能进过Director Server
+
+-   不支持地址转换，也不支持端口映射
+
+-   RS可以是大多数常见的操作系统
+
+-   RS的网关绝不允许指向DIP(因为我们不允许他经过director)
+
+-   RS上的lo接口配置VIP的IP地址
+
+缺陷：RS和DS必须在同一机房中
+
+####    LVS-Tun模型
+
+重点：在原有的IP报文外再次封装多一层IP首部，内部IP首部（源地址为CIP，目标IIP为VIP），外层IP首部（源地址为DIP，目标IP为RIP）
+
+<img src="images/tun.jpg">
+
+1、当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链。此时报文的源IP为CIP，目标IP为VIP。
+
+2、PREROUTING检查发现数据包的目标IP是本机，将数据包送至INPUT链
+
+3、IPVS比对数据包请求的服务是否为集群服务，若是，在请求报文的首部再次封装一层IP报文，封装源IP为为DIP，目标IP为RIP。然后发至POSTROUTING链。此时源IP为DIP，目标IP为RIP
+
+4、POSTROUTING链根据最新封装的IP报文，将数据包发至RS（因为在外层封装多了一层IP首部，所以可以理解为此时通过隧道传输）。此时源IP为DIP，目标IP为RIP
+
+5、RS接收到报文后发现是自己的IP地址，就将报文接收下来，拆除掉最外层的IP后，会发现里面还有一层IP首部，而且目标是自己的lo接口VIP，那么此时RS开始处理此请求，处理完成之后，通过lo接口送给eth0网卡，然后向外传递。此时的源IP地址为VIP，目标IP为CIP
+
+6、响应报文最终送达至客户端
+
+####    LVS-Tun模型特性
+
+-   RIP、VIP、DIP全是公网地址
+-   RS的网关不会也不可能指向DIP
+-   所有的请求报文经由Director Server，但响应报文必须不能进过Director Server
+-   不支持端口映射
+-   RS的系统必须支持隧道
+
+### LVS算法调度
