@@ -48,12 +48,6 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 ####    LVS-NAT模型
 
-重点
-
--   修改目标IP地址为挑选出的RS的IP地址。
-
--   客户端请求报文与服务端响应报文都经过调度器，调度器面临瓶颈压力。
-
 <img src="images/nat.jpg">
 
 1、当用户请求到达Director Server，此时请求的数据报文会先到内核空间的PREROUTING链。此时报文的源IP为CIP，目标IP为VIP。
@@ -70,7 +64,9 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 ####    LVS-NAT模型的特性：
 
--   RS应该使用私有地址，RS的网关必须指向DIP
+-   修改目标IP地址为挑选出的RS的IP地址。
+
+-   RS可以只使用私有地址，但RS的网关必须指向DIP
 
 -   DIP和RIP必须在同一个网段内
 
@@ -83,12 +79,6 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 ####  LVS-DR（直接路由技术）模型  
 
 重点：
-
--   将请求报文的目标 MAC 地址设定为挑选出的 RS 的 MAC 地址。
-
--   前端调度器，后端服务器使用同样的 IP 地址，需要解决 IP 地址冲突问题。
-
--   客户端请求报文经调度服务器，但服务端响应报文可不经调度器直接送达客户端，调度器瓶颈压力减小。
 
 <img src="images/dr.jpg">
 
@@ -106,32 +96,33 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 ####    LVS-DR（直接路由技术）模型的特性
 
--   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS
+-   将请求报文的目标 MAC 地址设定为挑选出的 RS 的 MAC 地址。
 
+-   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS。前端调度器，后端服务器使用相同的 IP 地址，需要解决 IP 地址  冲突问题。
+
+```
     解决方案：
 
-    -   在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
-        存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
+    1.在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
+    存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
 
-    -   arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。这是由iptables提供的
+    2.arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。
 
-    -   修改RS上内核参数（arp_ignore和arp_announce）将RS上的VIP配置在lo接口的别名上，并限制其不能响应对VIP地址解析请求。（最容易实现）
+    3.修改RS上内核参数（arp_ignore和arp_announce）将RS上的VIP配置在lo接口的别名上，并限制其不能响应对VIP地址解析请求。（最容易实现）
+
+```
 
 -   RS可以使用私有地址；也可以是公网地址，如果使用公网地址，此时可以通过互联网对RIP进行直接访问
 
--   RS跟Director Server必须在同一个物理网络中
+-   因为使用相同的 IP 地址，RS跟Director Server必须在同一个物理网络中，不支持地址转换，也不支持端口映射
 
--   所有的请求报文经由Director Server，但响应报文必须不能进过Director Server
-
--   不支持地址转换，也不支持端口映射
+-   所有的请求报文经由Director Server，但响应报文不经过Director Server
 
 -   RS可以是大多数常见的操作系统
 
--   RS的网关绝不允许指向DIP(因为我们不允许他经过director)
+-   RS的网关绝不指向DIP(因为我们不允许他经过director)
 
 -   RS上的lo接口配置VIP的IP地址
-
-缺陷：RS和DS必须在同一机房中
 
 ####    LVS-Tun模型
 
