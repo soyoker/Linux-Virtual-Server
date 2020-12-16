@@ -101,14 +101,14 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 -   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS。前端调度器，后端服务器使用相同的 IP 地址，需要解决 IP 地址  冲突问题。
 
 ```
-    解决方案：
+解决方案：
 
-    1.在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
+1.在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
     存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
 
-    2.arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。
+2.arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。
 
-    3.修改RS上内核参数（arp_ignore和arp_announce）将RS上的VIP配置在lo接口的别名上，并限制其不能响应对VIP地址解析请求。（最容易实现）
+3.修改RS上内核参数（arp_ignore和arp_announce）将RS上的VIP配置在lo接口的别名上，并限制其不能响应对VIP地址解析请求。（最容易实现）
 
 ```
 
