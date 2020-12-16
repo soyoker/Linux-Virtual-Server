@@ -108,10 +108,10 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 -   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS
 
-解决方案：
+    解决方案：
 
     -   在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
-存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
+        存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
 
     -   arptables：在arp的层次上实现在ARP解析时做防火墙规则，过滤RS响应ARP请求。这是由iptables提供的
 
@@ -187,7 +187,7 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
     简单算法：active*256+inactive(谁的小，挑谁)
 
- -   WLC(Weighted Least-Connection Scheduling)：加权最少连接。
+-   WLC(Weighted Least-Connection Scheduling)：加权最少连接。
 
     加权最小连接调度算法是最小连接调度的超集，各个服务器用相应的权值表示其处理性能。服务器的缺省权值为1，系统管理员可以动态地设置服务器的权限，加权最小连接调度在调度新连接时尽可能使服务器的已建立连接数和其权值成比例。
 
