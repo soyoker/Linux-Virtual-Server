@@ -40,7 +40,11 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 ####    LVS-NAT模型
 
-重点：修改目标IP地址为挑选出的RS的IP地址。
+重点
+
+-   修改目标IP地址为挑选出的RS的IP地址。
+
+-   客户端请求报文与服务端响应报文都经过调度器，调度器面临瓶颈压力。
 
 <img src="images/nat.jpg">
 
@@ -54,7 +58,7 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 5、Real Server比对发现目标为自己的IP，开始构建响应报文发回给Director Server。此时报文的源IP为RIP，目标IP为CIP。
 
-6、Director Server在响应客户端前，此时会将源IP地址修改为自己的VIP地址，然后响应给客户端。此时报文的源IP为VIP，目标IP为CIP。
+6、Director Server在响应客户端前，此时会将源 IP 地址修改为自己的 VIP 地址，然后响应给客户端。此时报文的源IP为VIP，目标IP为CIP。
 
 ####    LVS-NAT模型的特性：
 
@@ -62,17 +66,21 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 -   DIP和RIP必须在同一个网段内
 
--   请求和响应报文都需要经过Director Server，高负载场景中，Director Server易成为性能瓶颈
+-   请求和响应报文都需要经过 Director Server，高负载场景中，Director Server 易成为性能瓶颈
 
 -   支持端口映射
 
 -   RS可以使用任意操作系统
 
-缺陷：对Director Server压力会比较大，请求和响应都需经过director server
+####  LVS-DR（直接路由技术）模型  
 
-####  LVS-DR模型  
+重点：
 
-重点：将请求报文的目标MAC地址设定为挑选出的RS的MAC地址
+-   将请求报文的目标 MAC 地址设定为挑选出的 RS 的 MAC 地址。
+
+-   前端调度器，后端服务器使用同样的 IP 地址，需要解决 IP 地址冲突问题。
+
+-   客户端请求报文经调度服务器，但服务端响应报文可不经调度器直接送达客户端，调度器瓶颈压力减小。
 
 <img src="images/dr.jpg">
 
@@ -88,9 +96,10 @@ IPVSADM：ipvsadm 是用来定义LVS的转发规则的，工作于用户空间�
 
 6、响应报文最终送达至客户端
 
-####    LVS-DR模型的特性
+####    LVS-DR（直接路由技术）模型的特性
 
 -   保证前端路由将目标地址为VIP报文统统发给Director Server，而不是RS
+
 解决方案：
 
     -   在前端路由器做静态地址路由绑定，将对于VIP的地址仅路由到Director Server
